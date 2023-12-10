@@ -3,25 +3,31 @@ def buildService(serviceName, dockerfilePath, lastCommitId) {
         script {
             sh "cat ${dockerfilePath}/Dockerfile"
             sh "cp /var/jenkins_home/jacoco/jacocoagent.jar ${dockerfilePath}/"
-            sh "docker build -t ${serviceName}-${lastCommitId} -f ${dockerfilePath}/Dockerfile ${dockerfilePath}/"
+            sh "docker build -t ${serviceName}:${lastCommitId} -f ${dockerfilePath}/Dockerfile ${dockerfilePath}/"
         }
     }
 }
 
 def startService(serviceName, lastCommitId, servicePort, jacocoPort, currentBranch) {
-    stage("Start ${serviceName} Container") {
+    def containerName = "${serviceName}-${lastCommitId}"
+    stage("Start ${containerName} Container") {
         script {
-            sh "docker run -it -d -p ${servicePort}:8080 -p ${jacocoPort}:6300 -v /home/www/xgame/logs/${currentBranch}/${serviceName}:/app/logs/ ${serviceName}-${lastCommitId}"
+            def containerExists = sh(script: "docker ps -q -f name=${containerName}", returnStatus: true).status == 0
+            if (!containerExists) {
+                sh "docker run -it -d -p ${servicePort}:8080 -p ${jacocoPort}:6300 -v /home/www/tiger/logs/${currentBranch}/${serviceName}:/app/logs/ --name ${containerName} ${serviceName}:${lastCommitId}"
+            } else {
+                echo "Container ${containerName} already running, skipping restart."
+            }
         }
     }
 }
 
 
-def generateJacocoReport(serviceName, jacocoPort, path) {
+def generateJacocoReport(serviceName, jacocoPort,path) {
     def jacocoDir = "/var/jenkins_home/jacoco/"
     // Change working directory to the one containing jacococli.jar
     dir(jacocoDir) {
-        sh "java -jar ./jacococli.jar dump --address 127.0.0.1 --port ${jacocoPort} --destfile ${serviceName}.exec"
+        sh "java -jar ./jacococli.jar dump --address 172.18.31.118 --port ${jacocoPort} --destfile ${serviceName}.exec"
         sh "java -jar ./jacococli.jar report ${serviceName}.exec --classfiles ${path}/target/classes --html reports/jacoco-report/${serviceName} --sourcefiles ${path}/src/main/java"
     }
     archiveArtifacts "${path}/target/classes/**/*.class"
@@ -31,8 +37,8 @@ def generateJacocoReport(serviceName, jacocoPort, path) {
 def pushDockerImage(serviceName, lastCommitId, harborUser, harborPasswd, harborUrl, harborRepo) {
     sh """
         docker login -u ${harborUser} -p ${harborPasswd} ${harborUrl}
-        docker tag ${serviceName}-${lastCommitId} ${harborUrl}/${harborRepo}/${serviceName}-${lastCommitId}
-        docker push ${harborUrl}/${harborRepo}/${serviceName}-${lastCommitId}
+        docker tag ${serviceName}:${lastCommitId} ${harborUrl}/${harborRepo}/${serviceName}:${lastCommitId}
+        docker push ${harborUrl}/${harborRepo}/${serviceName}:${lastCommitId}
     """
 }
 
