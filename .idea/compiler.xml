@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="CompilerConfiguration">
+    <annotationProcessing>
+      <profile name="Maven default annotation processors profile" enabled="true">
+        <sourceOutputDir name="target/generated-sources/annotations" />
+        <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
+        <outputRelativeToContentRoot value="true" />
+        <module name="xgame-api" />
+        <module name="xgame-web" />
+        <module name="xgame-admin" />
+      </profile>
+    </annotationProcessing>
+    <bytecodeTargetLevel>
+      <module name="xgame" target="17" />
+      <module name="xgame-admin" target="17" />
+      <module name="xgame-api" target="17" />
+      <module name="xgame-web" target="17" />
+    </bytecodeTargetLevel>
+  </component>
+  <component name="JavacSettings">
+    <option name="ADDITIONAL_OPTIONS_OVERRIDE">
+      <module name="xgame" options="-parameters" />
+      <module name="xgame-admin" options="-parameters" />
+      <module name="xgame-api" options="-parameters" />
+      <module name="xgame-web" options="-parameters" />
+    </option>
+  </component>
+</project>
