@@ -157,10 +157,15 @@ pipeline {
                     def diffDir = "${WORKSPACE}/code_diff"
                     dir(diffDir) {
                         // 使用git diff生成文件路径，并输出到文件
-                        def diffOutput = sh(script: "git diff --name-only ${currentBranch}..master -- |grep '.java'", returnStdout: true).trim()
-                        writeFile file: 'code_diff_files.txt', text: diffOutput.replaceAll('\n', ',')
+                        def diffOutput = sh(script: "git diff --name-only ${currentBranch}..master -- | grep '.java'", returnStdout: true).trim()
+        
+                        if (diffOutput.isEmpty()) {
+                            echo "没有发现差异"
+                        } else {
+                            writeFile file: 'code_diff_files.txt', text: diffOutput.replaceAll('\n', ',')
+                            echo "文件路径已保存到 ${WORKSPACE}/code_diff/code_diff_files.txt 文件中"
+                        }
                     }
-                    echo "文件路径已保存到 ${WORKSPACE}/code_diff/code_diff_files.txt 文件中"
                 }
             }
         }
