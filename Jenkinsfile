@@ -141,14 +141,6 @@ pipeline {
         }
 
         stage('Diff') {
-            when {
-                // 根据条件判断是否执行 Diff 阶段
-                allOf {
-                    expression { return env.BRANCH_NAME != 'master' }
-                    expression { params.generateReport != 'true' }
-                }
-
-            }
             steps {
                 script {
                     sh 'git branch --list'
@@ -157,19 +149,30 @@ pipeline {
                     def diffDir = "${WORKSPACE}/code_diff"
                     dir(diffDir) {
                         // 使用git diff生成文件路径，并输出到文件
-                        def diffOutput = sh(script: "git diff --name-only ${currentBranch}..master -- | grep '.java'", returnStdout: true).trim()
-        
-                        if (diffOutput.isEmpty()) {
-                            echo "没有发现差异"
-                        } else {
-                            writeFile file: 'code_diff_files.txt', text: diffOutput.replaceAll('\n', ',')
-                            echo "文件路径已保存到 ${WORKSPACE}/code_diff/code_diff_files.txt 文件中"
+                        def gitDiffCommand = "git diff --name-only ${currentBranch}..master --"
+                        def diffOutput = sh(script: gitDiffCommand, returnStdout: true).trim()
+                        
+                        // Print the diff results
+                        echo "Git Diff Output:"
+                        echo diffOutput
+                        
+                        try {
+                            // Filter Java files using grep
+                            def javaFilesOutput = sh(script: "echo '${diffOutput}' | grep '.java'", returnStdout: true).trim()
+                            if (diffOutput.isEmpty()) {
+                                echo "No differences found"
+                            } else {
+                                writeFile file: 'code_diff_files.txt', text: diffOutput.replaceAll('\n', ',')
+                                echo "File paths have been saved to ${WORKSPACE}/code_diff/code_diff_files.txt"
+                            }
+                        } catch (Exception e) {
+                            echo "Error writing file: ${e.message}"
                         }
                     }
                 }
             }
         }
-
+        
         stage('SonarQube Scan') {
             when {
                 allOf {
