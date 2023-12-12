@@ -185,46 +185,52 @@ pipeline {
                 script {
                     // 获取当前分支
                     def currentBranch = env.BRANCH_NAME
-
+        
                     // 定义projectname
                     def projectName
-
+        
                     // 在master分支执行全量扫描
                     if (currentBranch != 'master') {
                         // 在非master分支执行全量和增量扫描
                         projectName = "${JOB_NAME}"
-
+        
                         // 读取差异文件
                         def diffFilePath = "${WORKSPACE}/code_diff/code_diff_files.txt"
-                        def diffOutput = readFile(file: diffFilePath).trim()
-
-                        // 如果有差异，则执行增量扫描
-                        if (diffOutput) {
-                            echo "Running incremental SonarQube scan based on diff:"
-                            echo diffOutput
-                            projectName += "_incremental"
-                            // 使用正则表达式确保 projectName 符合规范，并添加一个非数字字符
-                            projectName = projectName.replaceAll('[^a-zA-Z0-9-_:.]', '_')
-                            // 检查是否包含至少一个非数字字符
-                            if (!(projectName =~ /[^\d]/)) {
-                                projectName += '_x'  // 添加一个非数字字符
+        
+                        // 判断差异文件是否存在
+                        if (fileExists(diffFilePath)) {
+                            def diffOutput = readFile(file: diffFilePath).trim()
+        
+                            // 如果有差异，则执行增量扫描
+                            if (diffOutput) {
+                                echo "Running incremental SonarQube scan based on diff:"
+                                echo diffOutput
+                                projectName += "_incremental"
+                                // 使用正则表达式确保 projectName 符合规范，并添加一个非数字字符
+                                projectName = projectName.replaceAll('[^a-zA-Z0-9-_:.]', '_')
+                                // 检查是否包含至少一个非数字字符
+                                if (!(projectName =~ /[^\d]/)) {
+                                    projectName += '_x'  // 添加一个非数字字符
+                                }
+                                // 执行增量扫描
+                                sh "${SONAR_SCANNER_HOME} -Dsonar.sources=${diffOutput} -Dsonar.projectname=${projectName} -Dsonar.login=${SONAR_LOGIN} -Dsonar.projectKey=${projectName} -Dsonar.java.binaries=${SONAR_JAVA_BINARIES}"
+                            } else {
+                                echo "No diff found. Skipping incremental SonarQube scan."
                             }
-                            // 执行增量扫描
-                            sh "${SONAR_SCANNER_HOME} -Dsonar.sources=${diffOutput} -Dsonar.projectname=${projectName} -Dsonar.login=${SONAR_LOGIN} -Dsonar.projectKey=${projectName} -Dsonar.java.binaries=${SONAR_JAVA_BINARIES}"
                         } else {
-                            echo "No diff found. Skipping incremental SonarQube scan."
+                            echo "Diff file not found. Skipping incremental SonarQube scan."
                         }
                     }
-
+        
                     projectName = "${JOB_NAME}_full"
                     // 使用正则表达式确保 projectName 符合规范，并添加一个非数字字符
                     projectName = projectName.replaceAll('[^a-zA-Z0-9-_:.]', '_')
-
+        
                     // 检查是否包含至少一个非数字字符
                     if (!(projectName =~ /[^\d]/)) {
                         projectName += '_x'  // 添加一个非数字字符
                     }
-
+        
                     // 执行全量扫描
                     sh "${SONAR_SCANNER_HOME} -Dsonar.sources=${SONAR_SOURCES} -Dsonar.projectname=${projectName} -Dsonar.login=${SONAR_LOGIN} -Dsonar.projectKey=${projectName} -Dsonar.java.binaries=${SONAR_JAVA_BINARIES}"
                 }
